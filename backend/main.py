@@ -31,8 +31,8 @@ app.add_middleware(
         "http://localhost:3000", 
         "http://localhost:5173",  # React dev servers
         "https://webpuppy.netlify.app",  # Production frontend
-        "https://*.iarm.xyz",     # iarm.xyz domains
-        "http://*.iarm.xyz"       # HTTP fallback for iarm.xyz
+        "https://webpuppy.iarm.xyz",     # Specific iarm.xyz domain
+        "http://webpuppy.iarm.xyz"       # HTTP fallback for specific domain
     ],
     allow_credentials=True,
     allow_methods=["*"],
