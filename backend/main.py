@@ -20,6 +20,7 @@ load_dotenv()
 # API Keys
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Cloud Run environment variable
 
 app = FastAPI(title="Webhound API", version="1.0.0")
 
@@ -425,4 +426,5 @@ async def cleanup_old_jobs(days: int = 30):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port) 
