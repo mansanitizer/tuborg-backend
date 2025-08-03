@@ -1,140 +1,204 @@
 # Webhound Backend
 
-A FastAPI-based backend for the Webhound dataset generation service with SQLite database integration.
-
-## Quick Start
-
-### Using Reset Scripts (Recommended)
-
-**For regular development:**
-```bash
-./quick_reset.sh
-```
-
-**For complete reset/troubleshooting:**
-```bash
-./reset_backend.sh
-```
-
-### Manual Setup
-
-1. **Activate virtual environment:**
-```bash
-source venv/bin/activate
-```
-
-2. **Install dependencies:**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Start the server:**
-```bash
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+A FastAPI-based backend for the Webhound AI-powered dataset builder, featuring CrewAI multi-agent workflows for research, data extraction, and validation.
 
 ## Features
 
-- ✅ **SQLite Database**: Persistent job storage
-- ✅ **CrewAI Integration**: AI-powered dataset generation
-- ✅ **RESTful API**: FastAPI with automatic documentation
-- ✅ **Background Processing**: Async job processing
-- ✅ **Admin Endpoints**: Database management and statistics
-- ✅ **CSV Export**: Download generated datasets
-- ✅ **Rate Limiting**: Request throttling (temporarily disabled)
+- **CrewAI Multi-Agent Workflow**: Three specialized agents working together
+  - Web Research Specialist: Searches and researches queries
+  - Data Extraction Specialist: Extracts and structures data
+  - Data Quality Assurance Specialist: Validates and quality-checks data
+- **FastAPI REST API**: Clean, modern API with comprehensive endpoints
+- **SQLite Database**: Lightweight, file-based database for job storage
+- **Async Processing**: Background task processing for non-blocking operations
+- **Query Preprocessing**: Security guardrails against misuse and inappropriate content
+- **User Feedback System**: "Good dog" / "Bad dog" rating system
+- **Comprehensive Error Handling**: Graceful handling of API quotas and processing errors
+
+## Architecture
+
+### Core Components
+
+1. **CrewAI Setup** (`crewai_setup_working.py`)
+   - Multi-agent workflow orchestration
+   - Google Gemini 1.5 Flash integration
+   - Sequential task processing
+
+2. **FastAPI Application** (`main.py`)
+   - REST API endpoints
+   - Background task processing
+   - Request validation and preprocessing
+
+3. **Database Layer** (`database.py`)
+   - SQLite database management
+   - Job storage and retrieval
+   - User feedback tracking
 
 ## API Endpoints
 
 ### Core Endpoints
-- `POST /api/datasets/generate` - Create new dataset generation job
-- `GET /api/datasets/{job_id}/results` - Get job results
-- `GET /api/datasets/{job_id}/download` - Download CSV file
-- `GET /api/health` - Health check
+- `POST /api/datasets/generate` - Submit a new dataset generation request
+- `GET /api/datasets/{job_id}/results` - Get results for a specific job
+- `GET /api/queries/recent` - Get recent queries with job IDs
+- `GET /api/health` - Health check endpoint
+
+### Feedback System
+- `POST /api/jobs/{job_id}/rate` - Rate a job (good dog / bad dog)
+- `GET /api/jobs/rating-stats` - Get overall rating statistics
 
 ### Admin Endpoints
-- `GET /api/admin/stats` - Database statistics
-- `GET /api/admin/jobs` - List all jobs
-- `DELETE /api/admin/jobs/{job_id}` - Delete specific job
-- `POST /api/admin/cleanup` - Cleanup old jobs
+- `GET /api/admin/preprocessing-stats` - Get preprocessing statistics
+- `POST /api/admin/test-preprocessing` - Test preprocessing with sample queries
 
-## Database
+## Setup and Installation
 
-The backend uses SQLite for persistent storage:
+### Prerequisites
+- Python 3.8+
+- Google Gemini API key
 
-- **File**: `webhound.db` (created automatically)
-- **Schema**: Jobs table with JSON serialization
-- **Features**: ACID compliance, indexed queries, admin tools
+### Installation
 
-## Environment Variables
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/mansanitizer/tuborg-backend.git
+   cd tuborg-backend
+   ```
 
-Create a `.env` file with:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-TAVILY_API_KEY=your_tavily_api_key_here
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp env.example .env
+   # Edit .env and add your GOOGLE_API_KEY
+   ```
+
+4. **Initialize the database**
+   ```bash
+   python -c "from database import JobDatabase; JobDatabase().init_db()"
+   ```
+
+5. **Start the server**
+   ```bash
+   python main.py
+   ```
+
+The server will start on `http://localhost:8000`
+
+## Usage
+
+### Basic Dataset Generation
+
+```bash
+curl -X POST "http://localhost:8000/api/datasets/generate" \
+     -H "Content-Type: application/json" \
+     -d '{"query": "top 10 movies 2025"}'
 ```
+
+### Check Job Status
+
+```bash
+curl "http://localhost:8000/api/datasets/{job_id}/results"
+```
+
+### Rate a Job
+
+```bash
+curl -X POST "http://localhost:8000/api/jobs/{job_id}/rate" \
+     -H "Content-Type: application/json" \
+     -d '{"rating": "good_dog"}'
+```
+
+## Data Flow
+
+1. **Query Submission**: Frontend submits query via `/api/datasets/generate`
+2. **Preprocessing**: Query is validated and cleaned for security
+3. **Background Processing**: CrewAI workflow runs asynchronously
+4. **Data Extraction**: Agents research, extract, and validate data
+5. **JSON Parsing**: Markdown-wrapped JSON is parsed into structured data
+6. **Database Storage**: Results are stored in SQLite database
+7. **API Response**: Frontend receives structured dataset via `/api/datasets/{job_id}/results`
+
+## Security Features
+
+- **Query Preprocessing**: Blocks NSFW content, prompt injection, and oversized queries
+- **Agent-Level Safety**: Backup safety checks within the Web Research Agent
+- **Request Size Limits**: 10KB limit on incoming requests
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+
+## Error Handling
+
+- **API Quota Management**: Graceful handling of Google Gemini API quota limits
+- **Processing Failures**: Comprehensive error logging and user-friendly error messages
+- **Database Errors**: Robust error handling for database operations
+- **Network Issues**: Retry logic for external API calls
 
 ## Development
 
-### Reset Scripts
+### Testing
 
-Use the provided reset scripts for clean restarts:
+Run the test scripts to verify functionality:
 
-- **`quick_reset.sh`**: Fast development restarts
-- **`reset_backend.sh`**: Complete environment reset
-
-### Manual Reset
 ```bash
-# Kill processes
-pkill -f uvicorn
-pkill -f "python.*main"
-
-# Clean cache
-rm -rf __pycache__
-
-# Start server
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python test_api_response.py
+python test_new_query_simple.py
 ```
 
-## Documentation
+### Debugging
 
-- **`SQLITE_INTEGRATION.md`**: Complete database integration guide
-- **`BACKEND_SCRIPTS.md`**: Reset script documentation
-- **`SQLITE_CHANGES_SUMMARY.md`**: Integration change summary
+Use the debug scripts to inspect data:
+
+```bash
+python check_latest_job.py
+python debug_crewai_raw.py
+```
+
+### Database Management
+
+```bash
+# Reset database
+python -c "from database import JobDatabase; import os; os.remove('webhound.db') if os.path.exists('webhound.db') else None; JobDatabase().init_db()"
+```
+
+## Configuration
+
+### Environment Variables
+
+- `GOOGLE_API_KEY`: Your Google Gemini API key
+- `DATABASE_PATH`: Path to SQLite database (default: `webhound.db`)
+- `LOG_LEVEL`: Logging level (default: `INFO`)
+
+### CrewAI Configuration
+
+The CrewAI setup can be customized in `crewai_setup_working.py`:
+- Model selection (currently using `gemini-1.5-flash`)
+- Agent roles and goals
+- Task descriptions and workflows
+- Tool integrations
 
 ## Troubleshooting
 
-### Server Won't Start
-1. Use `./reset_backend.sh` for complete reset
-2. Check if port 8000 is available: `lsof -i :8000`
-3. Verify virtual environment is activated
-4. Check dependencies: `pip check`
+### Common Issues
 
-### Database Issues
-1. Remove database: `rm webhound.db`
-2. Run full reset: `./reset_backend.sh`
+1. **API Quota Exceeded**: The system will retry with exponential backoff
+2. **Database Errors**: Check file permissions and disk space
+3. **Import Errors**: Ensure all dependencies are installed
+4. **Parsing Issues**: Check the debug scripts for data structure analysis
 
-### API Errors
-1. Check server logs for detailed error messages
-2. Verify API keys in `.env` file
-3. Test with health endpoint: `curl http://localhost:8000/api/health`
+### Logs
 
-## Project Structure
+Check the console output for detailed error messages and processing logs.
 
-```
-backend/
-├── main.py                 # FastAPI application
-├── database.py            # SQLite database layer
-├── crewai_setup_working.py # CrewAI integration
-├── requirements.txt       # Python dependencies
-├── reset_backend.sh       # Full reset script
-├── quick_reset.sh         # Quick reset script
-├── .env                   # Environment variables
-└── webhound.db           # SQLite database (auto-created)
-```
+## Contributing
 
-## API Documentation
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-Once the server is running, visit:
-- **Interactive API docs**: http://localhost:8000/docs
-- **ReDoc documentation**: http://localhost:8000/redoc
-- **OpenAPI schema**: http://localhost:8000/openapi.json 
+## License
+
+This project is licensed under the MIT License. 
